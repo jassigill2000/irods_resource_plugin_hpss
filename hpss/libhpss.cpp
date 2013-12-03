@@ -2,20 +2,20 @@
 
 // =-=-=-=-=-=-=-
 // irods includes
-#include "msParam.h"
-#include "reGlobalsExtern.h"
-#include "rcConnect.h"
+#include "msParam.hpp"
+#include "reGlobalsExtern.hpp"
+#include "rcConnect.hpp"
 
 // =-=-=-=-=-=-=-
 // eirods includes
-#include "eirods_resource_plugin.h"
-#include "eirods_file_object.h"
-#include "eirods_physical_object.h"
-#include "eirods_collection_object.h"
-#include "eirods_string_tokenize.h"
-#include "eirods_hierarchy_parser.h"
-#include "eirods_resource_redirect.h"
-#include "eirods_stacktrace.h"
+#include "eirods_resource_plugin.hpp"
+#include "eirods_file_object.hpp"
+#include "eirods_physical_object.hpp"
+#include "eirods_collection_object.hpp"
+#include "eirods_string_tokenize.hpp"
+#include "eirods_hierarchy_parser.hpp"
+#include "eirods_resource_redirect.hpp"
+#include "eirods_stacktrace.hpp"
 
 // =-=-=-=-=-=-=-
 // stl includes
@@ -63,6 +63,8 @@
 #endif
 #include <sys/stat.h>
 
+typedef unsigned char uchar;
+
 extern "C" {
 // hpss includes
 #include <string.h>
@@ -85,7 +87,7 @@ extern "C" {
 // =-=-=-=-=-=-=-
 /// @brief Generates a full path name from the partial physical path and the specified resource's vault path
 eirods::error hpss_generate_full_path(
-    eirods::resource_property_map&      _prop_map,
+    eirods::plugin_property_map&      _prop_map,
     const std::string&                  _phy_path,
     std::string&                        _ret_string )
 {
@@ -116,19 +118,23 @@ eirods::error hpss_generate_full_path(
 // =-=-=-=-=-=-=-
 /// @brief update the physical path in the file object
 eirods::error hpss_check_path( 
-    eirods::resource_operation_context* _ctx ) {
+    eirods::resource_plugin_context& _ctx ) {
+    // =-=-=-=-=-=-=-
+    // dynamic pointer cast
+    eirods::data_object_ptr data_obj = boost::dynamic_pointer_cast< eirods::data_object >( _ctx.fco() );
+
     // =-=-=-=-=-=-=-
     // NOTE: Must do this for all storage resources
     std::string full_path;
-    eirods::error ret = hpss_generate_full_path( _ctx->prop_map(), 
-                                                 _ctx->fco().physical_path(), 
+    eirods::error ret = hpss_generate_full_path( _ctx.prop_map(), 
+                                                 data_obj->physical_path(), 
                                                  full_path );
     if(!ret.ok()) {
         std::stringstream msg;
         msg << "Failed generating full path for object.";
         ret = PASSMSG(msg.str(), ret);
     } else {
-        _ctx->fco().physical_path(full_path);
+        data_obj->physical_path(full_path);
     }
 
     return ret;
@@ -139,14 +145,14 @@ eirods::error hpss_check_path(
 /// @brief Checks the basic operation parameters and updates the physical path in the file object
 template< typename DEST_TYPE >
 eirods::error hpss_check_params_and_path(
-    eirods::resource_operation_context* _ctx ) {
+    eirods::resource_plugin_context& _ctx ) {
     
     eirods::error result = SUCCESS();
     eirods::error ret;
 
     // =-=-=-=-=-=-=-
     // check incoming parameters
-    if( !_ctx ) {
+    if( !_ctx.valid< DEST_TYPE >().ok() ) {
         std::stringstream msg;
         msg << "null resource context";
         result = ERROR( SYS_INVALID_INPUT_PARAM, msg.str() );
@@ -154,7 +160,7 @@ eirods::error hpss_check_params_and_path(
   
     // =-=-=-=-=-=-=-
     // verify that the resc context is valid 
-    ret = _ctx->valid< DEST_TYPE >(); 
+    ret = _ctx.valid< DEST_TYPE >(); 
     if( !ret.ok() ) { 
         std::stringstream msg;
         msg << "resource context is invalid.";
@@ -170,20 +176,20 @@ eirods::error hpss_check_params_and_path(
 // =-=-=-=-=-=-=-
 /// @brief Checks the basic operation parameters and updates the physical path in the file object
 eirods::error hpss_check_params_and_path(
-    eirods::resource_operation_context* _ctx ) {
+    eirods::resource_plugin_context& _ctx ) {
     
     eirods::error result = SUCCESS();
     eirods::error ret;
 
     // =-=-=-=-=-=-=-
     // check incoming parameters
-    if( !_ctx ) {
-        result = ERROR( SYS_INVALID_INPUT_PARAM, "hpss_check_params_and_path - null resource_property_map" );
+    if( !_ctx.valid().ok() ) {
+        result = ERROR( SYS_INVALID_INPUT_PARAM, "hpss_check_params_and_path - null plugin_property_map" );
     } 
   
     // =-=-=-=-=-=-=-
     // verify that the resc context is valid 
-    ret = _ctx->valid(); 
+    ret = _ctx.valid(); 
     if( !ret.ok() ) { 
         result = PASSMSG( "hpss_check_params_and_path - resource context is invalid", ret );
     } else {
@@ -246,7 +252,7 @@ extern "C" {
     /// @brief used for authentication to the hpss server
     ///        for this agent / session
     eirods::error hpss_start_operation( 
-        eirods::resource_property_map& _prop_map,
+        eirods::plugin_property_map& _prop_map,
         eirods::resource_child_map&    _cmap ) {
         // =-=-=-=-=-=-=-
         // get the keytab property
@@ -291,7 +297,7 @@ extern "C" {
     /// @brief used for releasing authentication to the hpss server
     ///        for this agent / session
     eirods::error hpss_stop_operation( 
-                  eirods::resource_property_map& _prop_map,
+                  eirods::plugin_property_map& _prop_map,
                   eirods::resource_child_map&    _cmap ) {
         //hpss_PurgeLoginCred();
         return SUCCESS();
@@ -313,7 +319,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX create
     eirods::error hpss_file_create_plugin( 
-        eirods::resource_operation_context* _ctx ) { 
+        eirods::resource_plugin_context& _ctx ) { 
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
         eirods::error ret = hpss_check_params_and_path( _ctx );
@@ -325,7 +331,9 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // get ref to fco
-        eirods::first_class_object& fco = _ctx->fco();
+        eirods::file_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          eirods::file_object >( 
+                                              _ctx.fco() );
         
         hpss_cos_hints_t hints_in, hints_out;
         hpss_cos_priorities_t hints_pri;
@@ -337,7 +345,7 @@ extern "C" {
         // =-=-=-=-=-=-=-
         // extract the rule results, this could possibly be a desired
         // Class Of Service for the HPSS system.
-        std::string rule_results = _ctx->rule_results();
+        std::string rule_results = _ctx.rule_results();
         if( !rule_results.empty() ) {
 	    hints_in.COSId = boost::lexical_cast<unsigned int>( rule_results );
 	    rodsLog( LOG_NOTICE, "HPSS - COS Hint for Create :: [%d]", hints_in.COSId );
@@ -347,9 +355,9 @@ extern "C" {
         // make call to umask & open for create
         mode_t myMask = umask((mode_t) 0000);
         rodsLog( LOG_NOTICE, "XXXX - hpss_file_create_plugin :: A" );
-        char* phypath = strdup(fco.physical_path().c_str());
+        char* phypath = strdup(fco->physical_path().c_str());
         int    fd     = hpss_Open( phypath, O_RDWR|O_CREAT|O_EXCL,
-                                   fco.mode(), &hints_in, &hints_pri, &hints_out );
+                                   fco->mode(), &hints_in, &hints_pri, &hints_out );
         rodsLog( LOG_NOTICE, "XXXX - hpss_file_create_plugin :: B" );
 
         // =-=-=-=-=-=-=-
@@ -358,7 +366,7 @@ extern "C" {
                 
         // =-=-=-=-=-=-=-
         // cache file descriptor in out-variable
-        fco.file_descriptor( fd );
+        fco->file_descriptor( fd );
                         
         // =-=-=-=-=-=-=-
         // trap error case with bad fd
@@ -368,11 +376,11 @@ extern "C" {
             // =-=-=-=-=-=-=-
             // WARNING :: Major Assumptions are made upstream and use the FD also as a
             //         :: Status, if this is not done EVERYTHING BREAKS!!!!111one
-            fco.file_descriptor( status );
+            fco->file_descriptor( status );
                         
             std::stringstream msg;
             msg << "hpss_file_create_plugin: create error for ";
-            msg << fco.physical_path();
+            msg << fco->physical_path();
             msg << ", errno = '";
             msg << strerror( -fd );
             msg << "', status = ";
@@ -390,7 +398,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX Open
     eirods::error hpss_file_open_plugin( 
-        eirods::resource_operation_context* _ctx ) { 
+        eirods::resource_plugin_context& _ctx ) { 
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
         eirods::error ret = hpss_check_params_and_path( _ctx );
@@ -402,8 +410,9 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // get ref to fco
-        eirods::first_class_object& fco = _ctx->fco();
-        
+        eirods::file_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          eirods::file_object >( 
+                                              _ctx.fco() );
         // =-=-=-=-=-=-=-
         // extract COS Hint from the open rule as a user defined
         // policy
@@ -418,12 +427,12 @@ extern "C" {
 
         // =-=-=-=-=-=-=-
         // make call to open
-        int fd = hpss_Open( const_cast<char*>( fco.physical_path().c_str() ), O_RDWR|O_EXCL,
-                            fco.mode(), &hints_in, &hints_pri, &hints_out );
+        int fd = hpss_Open( const_cast<char*>( fco->physical_path().c_str() ), O_RDWR|O_EXCL,
+                            fco->mode(), &hints_in, &hints_pri, &hints_out );
                         
         // =-=-=-=-=-=-=-
         // cache status in the file object
-        fco.file_descriptor( fd );
+        fco->file_descriptor( fd );
 
         // =-=-=-=-=-=-=-
         // did we still get an error?
@@ -432,7 +441,7 @@ extern "C" {
                         
             std::stringstream msg;
             msg << "hpss_file_open_plugin: open error for ";
-            msg << fco.physical_path();
+            msg << fco->physical_path();
             msg << ", errno = ";
             msg << strerror( -fd );
             msg << ", status = ";
@@ -450,7 +459,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX Read
     eirods::error hpss_file_read_plugin( 
-        eirods::resource_operation_context* _ctx,
+        eirods::resource_plugin_context& _ctx,
         void*                               _buf, 
         int                                 _len ) {
         // =-=-=-=-=-=-=-
@@ -464,11 +473,14 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // get ref to fco
-        eirods::first_class_object& fco = _ctx->fco();
+        eirods::file_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          eirods::file_object >( 
+                                              _ctx.fco() );
+        
         
         // =-=-=-=-=-=-=-
         // make the call to read
-        ssize_t status = hpss_Read( fco.file_descriptor(), _buf, _len );
+        ssize_t status = hpss_Read( fco->file_descriptor(), _buf, _len );
 
         // =-=-=-=-=-=-=-
         // pass along an error if it was not successful
@@ -477,7 +489,7 @@ extern "C" {
                         
             std::stringstream msg;
             msg << "hpssFileReadPlugin - read error fd = ";
-            msg << fco.file_descriptor();
+            msg << fco->file_descriptor();
             msg << ", errno = ";
             msg << strerror( -status );
             return ERROR( status, msg.str() );
@@ -492,7 +504,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX Write
     eirods::error hpss_file_write_plugin( 
-        eirods::resource_operation_context* _ctx,
+        eirods::resource_plugin_context& _ctx,
         void*                               _buf, 
         int                                 _len ) {
         // =-=-=-=-=-=-=-
@@ -506,11 +518,14 @@ extern "C" {
          
         // =-=-=-=-=-=-=-
         // get ref to fco
-        eirods::first_class_object& fco = _ctx->fco();
+        eirods::file_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          eirods::file_object >( 
+                                              _ctx.fco() );
+        
                 
         // =-=-=-=-=-=-=-
         // make the call to write
-        ssize_t status = hpss_Write( fco.file_descriptor(), _buf, _len );
+        ssize_t status = hpss_Write( fco->file_descriptor(), _buf, _len );
 
         // =-=-=-=-=-=-=-
         // pass along an error if it was not successful
@@ -519,7 +534,7 @@ extern "C" {
                         
             std::stringstream msg;
             msg << "hpss_file_write_plugin - write fd = ";
-            msg << fco.file_descriptor();
+            msg << fco->file_descriptor();
             msg << ", errno = '";
             msg << strerror( -status );
             msg << "', status = ";
@@ -536,7 +551,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX Close
     eirods::error hpss_file_close_plugin(
-        eirods::resource_operation_context* _ctx ) { 
+        eirods::resource_plugin_context& _ctx ) { 
         // =-=-=-=-=-=-=-                               
         // Check the operation parameters and update the physical path
         eirods::error ret = hpss_check_params_and_path( _ctx );
@@ -548,11 +563,14 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // get ref to fco
-        eirods::first_class_object& fco = _ctx->fco();
+        eirods::file_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          eirods::file_object >( 
+                                              _ctx.fco() );
+        
         
         // =-=-=-=-=-=-=-
         // make the call to close
-        int status = hpss_Close( fco.file_descriptor() );
+        int status = hpss_Close( fco->file_descriptor() );
 
         // =-=-=-=-=-=-=-
         // log any error
@@ -575,7 +593,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX Unlink
     eirods::error hpss_file_unlink_plugin( 
-        eirods::resource_operation_context* _ctx ) { 
+        eirods::resource_plugin_context& _ctx ) { 
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
         eirods::error ret = hpss_check_params_and_path( _ctx );
@@ -587,11 +605,14 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // get ref to fco
-        eirods::first_class_object& fco = _ctx->fco();
+        eirods::file_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          eirods::file_object >( 
+                                              _ctx.fco() );
+        
         
         // =-=-=-=-=-=-=-
         // make the call to unlink      
-        int status = hpss_Unlink( const_cast<char*>( fco.physical_path().c_str() ) );
+        int status = hpss_Unlink( const_cast<char*>( fco->physical_path().c_str() ) );
 
         // =-=-=-=-=-=-=-
         // error handling
@@ -600,7 +621,7 @@ extern "C" {
                         
             std::stringstream msg;
             msg << "hpss_file_unlink_plugin: unlink error for ";
-            msg << fco.physical_path();
+            msg << fco->physical_path();
             msg << ", errno = '";
             msg << strerror( -status );
             msg << "', status = ";
@@ -645,17 +666,17 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX Stat
     eirods::error hpss_file_stat_plugin( 
-        eirods::resource_operation_context* _ctx,
+        eirods::resource_plugin_context& _ctx,
         struct stat*                        _statbuf ) { 
         // =-=-=-=-=-=-=-
         // NOTE:: this function assumes the object's physical path is 
         //        correct and should not have the vault path 
         //        prepended - hcj
-        if( !_ctx ) {
+        if( !_ctx.valid< eirods::data_object_ptr >().ok() ) {
             return ERROR( SYS_INVALID_INPUT_PARAM, "hpss_file_stat_plugin - invalid resource context" );
         }
          
-        eirods::error ret = _ctx->valid(); 
+        eirods::error ret = _ctx.valid(); 
         if(!ret.ok()) {
             std::stringstream msg;
             msg << "resource context is invalid";
@@ -664,13 +685,14 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // get ref to fco
-        eirods::first_class_object& fco = _ctx->fco();
-        
+        eirods::data_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          eirods::data_object >( 
+                                              _ctx.fco() );
         // =-=-=-=-=-=-=-
         // make the call to stat
         hpss_stat_t hpss_stat;
         memset( &hpss_stat, 0, sizeof( hpss_stat ) );
-        int status = hpss_Stat( const_cast<char*>( fco.physical_path().c_str() ), &hpss_stat );
+        int status = hpss_Stat( const_cast<char*>( fco->physical_path().c_str() ), &hpss_stat );
         hpss_stat_to_stat( _statbuf, &hpss_stat );
  
         // =-=-=-=-=-=-=-
@@ -678,7 +700,7 @@ extern "C" {
         if( status < 0 ) {
             std::stringstream msg;
             msg << "hpss_file_stat_plugin: stat error for ";
-            msg << fco.physical_path();
+            msg << fco->physical_path();
             msg << ", errno = '";
             msg << strerror( -status );
             msg << "', status = ";
@@ -693,7 +715,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX Fstat
     eirods::error hpss_file_fstat_plugin( 
-        eirods::resource_operation_context* _ctx,
+        eirods::resource_plugin_context& _ctx,
         struct stat*                        _statbuf ) {
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
@@ -706,12 +728,15 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // get ref to fco
-        eirods::first_class_object& fco = _ctx->fco();
+        eirods::file_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          eirods::file_object >( 
+                                              _ctx.fco() );
+        
         
         // =-=-=-=-=-=-=-
         // make the call to fstat
         hpss_stat_t hpss_stat;
-        int status = hpss_Fstat( fco.file_descriptor(), &hpss_stat );
+        int status = hpss_Fstat( fco->file_descriptor(), &hpss_stat );
         hpss_stat_to_stat( _statbuf, &hpss_stat );
 
         // =-=-=-=-=-=-=-
@@ -719,7 +744,7 @@ extern "C" {
         if( status < 0 ) {
             std::stringstream msg;
             msg << "hpss_file_fstat_plugin: fstat error for ";
-            msg << fco.file_descriptor();
+            msg << fco->file_descriptor();
             msg << ", errno = '";
             msg << strerror( -status );
             msg << "', status = ";
@@ -736,7 +761,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX lseek
     eirods::error hpss_file_lseek_plugin( 
-        eirods::resource_operation_context* _ctx,
+        eirods::resource_plugin_context& _ctx,
         hpss_off_t                          _offset, 
         int                                 _whence ) {
         // =-=-=-=-=-=-=-
@@ -750,18 +775,21 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // get ref to fco
-        eirods::first_class_object& fco = _ctx->fco();
+        eirods::file_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          eirods::file_object >( 
+                                              _ctx.fco() );
+        
         
         // =-=-=-=-=-=-=-
         // make the call to lseek       
-        hpss_off_t status = hpss_Lseek( fco.file_descriptor(),  _offset, _whence );
+        hpss_off_t status = hpss_Lseek( fco->file_descriptor(),  _offset, _whence );
 
         // =-=-=-=-=-=-=-
         // return an error if necessary
         if( status < 0 ) {
             std::stringstream msg;
             msg << "hpss_file_lseek_plugin: lseek error for ";
-            msg << fco.file_descriptor();
+            msg << fco->file_descriptor();
             msg << ", errno = '";
             msg << strerror( -status );
             msg << "', status = ";
@@ -777,7 +805,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX fsync
     eirods::error hpss_file_fsync_plugin( 
-        eirods::resource_operation_context* _ctx ) { 
+        eirods::resource_plugin_context& _ctx ) { 
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
         eirods::error ret = hpss_check_params_and_path( _ctx );
@@ -789,20 +817,23 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // get ref to fco
-        eirods::first_class_object& fco = _ctx->fco();
+        eirods::file_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          eirods::file_object >( 
+                                              _ctx.fco() );
+        
         
         // =-=-=-=-=-=-=-
         // make the call to fsync   
         // This is a no-op that will return 0 as long
         // as the hpss file descriptor is valid.    
-        int status = hpss_Fsync( fco.file_descriptor() );
+        int status = hpss_Fsync( fco->file_descriptor() );
 
         // =-=-=-=-=-=-=-
         // return an error if necessary
         if( status < 0 ) {
             std::stringstream msg;
             msg << "hpss_file_fsync_plugin: fsync error for ";
-            msg << fco.file_descriptor();
+            msg << fco->file_descriptor();
             msg << ", errno = '";
             msg << strerror( -status );
             msg << "', status = ";
@@ -818,15 +849,15 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX mkdir
     eirods::error hpss_file_mkdir_plugin( 
-        eirods::resource_operation_context* _ctx ) { 
+        eirods::resource_plugin_context& _ctx ) { 
         // =-=-=-=-=-=-=- 
         // NOTE :: this function assumes the object's physical path is correct and 
         //         should not have the vault path prepended - hcj
-        if( !_ctx ) {
+        if( !_ctx.valid< eirods::collection_object >().ok() ) {
             return ERROR( SYS_INVALID_INPUT_PARAM, "hpss_file_mkdir_plugin - invalid resource context" );
         }
          
-        eirods::error ret = _ctx->valid< eirods::collection_object >(); 
+        eirods::error ret = _ctx.valid< eirods::collection_object >(); 
         if(!ret.ok()) {
             std::stringstream msg;
             msg << "resource context is invalid";
@@ -835,12 +866,13 @@ extern "C" {
  
         // =-=-=-=-=-=-=-
         // cast down the chain to our understood object type
-        eirods::collection_object& coll_obj = dynamic_cast< eirods::collection_object& >( _ctx->fco() );
-
+        eirods::collection_object_ptr coll_obj = boost::dynamic_pointer_cast< 
+                                                     eirods::collection_object >( 
+                                                         _ctx.fco() );
         // =-=-=-=-=-=-=-
         // make the call to mkdir & umask
         mode_t myMask = umask( ( mode_t ) 0000 );
-        int    status =  ( hpss_Mkdir( const_cast<char*>( coll_obj.physical_path().c_str() ), coll_obj.mode() ) );
+        int    status =  ( hpss_Mkdir( const_cast<char*>( coll_obj->physical_path().c_str() ), coll_obj->mode() ) );
 
         // =-=-=-=-=-=-=-
         // reset the old mask 
@@ -852,7 +884,7 @@ extern "C" {
             if (-status != EEXIST) {
                 std::stringstream msg;
                 msg << "hpss_file_mkdir_plugin: mkdir error for ";
-                msg << coll_obj.physical_path();
+                msg << coll_obj->physical_path();
                 msg << ", errno = '";
                 msg << strerror( -status );
                 msg << "', status = ";
@@ -871,7 +903,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX rmdir
     eirods::error hpss_file_rmdir_plugin( 
-        eirods::resource_operation_context* _ctx ) { 
+        eirods::resource_plugin_context& _ctx ) { 
 
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
@@ -884,18 +916,21 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // get ref to fco
-        eirods::first_class_object& fco = _ctx->fco();
+        eirods::file_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          eirods::file_object >( 
+                                              _ctx.fco() );
+        
         
         // =-=-=-=-=-=-=-
         // make the call to chmod
-        int status = hpss_Rmdir( const_cast<char*>( fco.physical_path().c_str() ) );
+        int status = hpss_Rmdir( const_cast<char*>( fco->physical_path().c_str() ) );
 
         // =-=-=-=-=-=-=-
         // return an error if necessary
         if( status < 0 ) {
             std::stringstream msg;
             msg << "hpss_file_rmdir_plugin: mkdir error for ";
-            msg << fco.physical_path();
+            msg << fco->physical_path();
             msg << ", errno = '";
             msg << strerror( -status );
             msg << "', status = ";
@@ -911,7 +946,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX opendir
     eirods::error hpss_file_opendir_plugin( 
-        eirods::resource_operation_context* _ctx ) { 
+        eirods::resource_plugin_context& _ctx ) { 
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
         eirods::error ret = hpss_check_params_and_path< eirods::collection_object >( _ctx );
@@ -923,11 +958,13 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // cast down the chain to our understood object type
-        eirods::collection_object& coll_obj = dynamic_cast< eirods::collection_object& >( _ctx->fco() );
+        eirods::collection_object_ptr coll_obj = boost::dynamic_pointer_cast< 
+                                                     eirods::collection_object >( 
+                                                         _ctx.fco() );
 
         // =-=-=-=-=-=-=-
         // make the callt to opendir
-        int fd = hpss_Opendir( const_cast< char* > ( coll_obj.physical_path().c_str() ));
+        int fd = hpss_Opendir( const_cast< char* > ( coll_obj->physical_path().c_str() ));
 
         // =-=-=-=-=-=-=-
         // return an error if necessary
@@ -937,7 +974,7 @@ extern "C" {
 
             std::stringstream msg;
             msg << "hpss_file_opendir_plugin: opendir error for ";
-            msg << coll_obj.physical_path();
+            msg << coll_obj->physical_path();
             msg << ", errno = ";
             msg << strerror( -fd );
             msg << ", status = ";
@@ -948,7 +985,7 @@ extern "C" {
 
         // =-=-=-=-=-=-=-
         // cache dir_ptr & status in out variables
-        coll_obj.directory_pointer( reinterpret_cast < DIR* > ( fd ));
+        coll_obj->directory_pointer( reinterpret_cast < DIR* > ( fd ));
 
         return SUCCESS();
 
@@ -957,7 +994,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX closedir
     eirods::error hpss_file_closedir_plugin( 
-        eirods::resource_operation_context* _ctx ) { 
+        eirods::resource_plugin_context& _ctx ) { 
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
         eirods::error ret = hpss_check_params_and_path< eirods::collection_object >( _ctx );
@@ -969,18 +1006,19 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // cast down the chain to our understood object type
-        eirods::collection_object& coll_obj = dynamic_cast< eirods::collection_object& >( _ctx->fco() );
-
+        eirods::collection_object_ptr coll_obj = boost::dynamic_pointer_cast< 
+                                                     eirods::collection_object >( 
+                                                         _ctx.fco() );
         // =-=-=-=-=-=-=-
         // make the callt to opendir
-        int status = hpss_Closedir( reinterpret_cast< long >( coll_obj.directory_pointer() ) );
+        int status = hpss_Closedir( reinterpret_cast< long >( coll_obj->directory_pointer() ) );
                         
         // =-=-=-=-=-=-=-
         // return an error if necessary
         if( status < 0 ) {
             std::stringstream msg;
             msg << "hpss_file_closedir_plugin: closedir error for ";
-            msg << coll_obj.physical_path();
+            msg << coll_obj->physical_path();
             msg << ", errno = '";
             msg << strerror( -status );
             msg << "', status = ";
@@ -1001,7 +1039,13 @@ extern "C" {
         // =-=-=-=-=-=-=-=-
         // 
         _rods_dirent.d_offset = low32m( _hpss_dirent.d_offset ); /* offset after this entry */
-        memcpy( &_rods_dirent.d_handle, &_hpss_dirent.d_handle, sizeof( ns_ObjHandle_t ) ); // NOTE:: unholy hack.
+// =-=-=-=-=-=-=-=-
+// =-=-=-=-=-=-=-=-
+// JMC - did this require modificaiton of the agent code?
+//       this does not appear in the agent anywhere or anywhere else
+//        memcpy( &_rods_dirent.d_handle, &_hpss_dirent.d_handle, sizeof( ns_ObjHandle_t ) ); // NOTE:: unholy hack.
+// =-=-=-=-=-=-=-=-
+// =-=-=-=-=-=-=-=-
         _rods_dirent.d_reclen = _hpss_dirent.d_reclen;           /* length of this record */
         _rods_dirent.d_namlen = _hpss_dirent.d_namelen;          /* length of d_name */
         strncpy( _hpss_dirent.d_name, _rods_dirent.d_name, strlen( _hpss_dirent.d_name ) );
@@ -1013,7 +1057,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX readdir
     eirods::error hpss_file_readdir_plugin( 
-        eirods::resource_operation_context* _ctx,
+        eirods::resource_plugin_context& _ctx,
         struct rodsDirent**                 _rods_dirent ) {
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
@@ -1026,7 +1070,10 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // cast down the chain to our understood object type
-        eirods::collection_object& coll_obj = dynamic_cast< eirods::collection_object& >( _ctx->fco() );
+        eirods::collection_object_ptr coll_obj = boost::dynamic_pointer_cast< 
+                                                     eirods::collection_object >( 
+                                                         _ctx.fco() );
+        // =-=-=-=-=-=-=-
 
         // =-=-=-=-=-=-=-
         // zero out errno?
@@ -1035,7 +1082,7 @@ extern "C" {
         // =-=-=-=-=-=-=-
         // make the call to readdir
         hpss_dirent_t hpss_dirent;
-        int status = hpss_Readdir( reinterpret_cast<long>( coll_obj.directory_pointer() ), &hpss_dirent );
+        int status = hpss_Readdir( reinterpret_cast<long>( coll_obj->directory_pointer() ), &hpss_dirent );
 
         // =-=-=-=-=-=-=-
         // handle error cases
@@ -1076,7 +1123,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface for POSIX rename
     eirods::error hpss_file_rename_plugin( 
-        eirods::resource_operation_context* _ctx,
+        eirods::resource_plugin_context& _ctx,
         const char*                         _new_file_name ) {
         // =-=-=-=-=-=-=- 
         // Check the operation parameters and update the physical path
@@ -1090,7 +1137,7 @@ extern "C" {
         // =-=-=-=-=-=-=- 
         // manufacture a new path from the new file name 
         std::string new_full_path;
-        ret = hpss_generate_full_path( _ctx->prop_map(), _new_file_name, new_full_path );
+        ret = hpss_generate_full_path( _ctx.prop_map(), _new_file_name, new_full_path );
         if(!ret.ok()) {
             std::stringstream msg;
             msg << "Unable to generate full path for destinate file: \"" << _new_file_name << "\"";
@@ -1099,14 +1146,17 @@ extern "C" {
          
         // =-=-=-=-=-=-=-
         // get ref to fco
-        eirods::first_class_object& fco = _ctx->fco();
+        eirods::file_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          eirods::file_object >( 
+                                              _ctx.fco() );
+        
 
         // =-=-=-=-=-=-=- 
         // make the directories in the path to the new file
         std::string new_path = new_full_path;
         std::size_t last_slash = new_path.find_last_of('/');
         new_path.erase(last_slash);
-        ret = hpss_file_mkdir_r( _ctx->comm(), "", new_path.c_str(), 0750 );
+        ret = hpss_file_mkdir_r( _ctx.comm(), "", new_path.c_str(), 0750 );
         if(!ret.ok()) {
 
             std::stringstream msg;
@@ -1119,7 +1169,7 @@ extern "C" {
 
         // =-=-=-=-=-=-=-
         // make the call to rename
-        int status = hpss_Rename( const_cast<char*>( fco.physical_path().c_str() ), 
+        int status = hpss_Rename( const_cast<char*>( fco->physical_path().c_str() ), 
                                   const_cast<char*>( new_full_path.c_str() ) );
 
         // =-=-=-=-=-=-=-
@@ -1127,7 +1177,7 @@ extern "C" {
         if( status < 0 ) {
             std::stringstream msg;
             msg << "hpss_file_rename_plugin: rename error for ";
-            msg <<  fco.physical_path();
+            msg <<  fco->physical_path();
             msg << " to ";
             msg << new_full_path;
             msg << ", errno = ";
@@ -1146,7 +1196,7 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // interface to determine free space on a device given a path
     eirods::error hpss_file_get_fsfreespace_plugin( 
-        eirods::resource_operation_context* _ctx ) { 
+        eirods::resource_plugin_context& _ctx ) { 
         return CODE( SYS_NOT_SUPPORTED );
 
     } // hpss_file_get_fsfreespace_plugin
@@ -1156,7 +1206,7 @@ extern "C" {
     // Just copy the file from filename to cacheFilename. optionalInfo info
     // is not used.
     eirods::error hpss_file_stagetocache_plugin( 
-        eirods::resource_operation_context* _ctx,
+        eirods::resource_plugin_context& _ctx,
         const char*                         _cache_file_name ) { 
         return CODE( SYS_NOT_SUPPORTED );
 
@@ -1167,7 +1217,7 @@ extern "C" {
     // Just copy the file from cacheFilename to filename. optionalInfo info
     // is not used.
     eirods::error hpss_file_synctoarch_plugin( 
-        eirods::resource_operation_context* _ctx,
+        eirods::resource_plugin_context& _ctx,
         char*                               _cache_file_name ) {
         return CODE( SYS_NOT_SUPPORTED );
 
@@ -1176,11 +1226,11 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // redirect_get - code to determine redirection for get operation
     eirods::error hpss_file_redirect_create( 
-                      eirods::resource_property_map& _prop_map,
-                      eirods::file_object&           _file_obj,
-                      const std::string&             _resc_name, 
-                      const std::string&             _curr_host, 
-                      float&                         _out_vote ) {
+                      eirods::plugin_property_map& _prop_map,
+                      eirods::file_object_ptr&     _file_obj,
+                      const std::string&           _resc_name, 
+                      const std::string&           _curr_host, 
+                      float&                       _out_vote ) {
         // =-=-=-=-=-=-=-
         // determine if the resource is down 
         int resc_status = 0;
@@ -1219,11 +1269,11 @@ extern "C" {
     // =-=-=-=-=-=-=-
     // redirect_get - code to determine redirection for get operation
     eirods::error hpss_file_redirect_open( 
-                      eirods::resource_property_map& _prop_map,
-                      eirods::file_object&           _file_obj,
-                      const std::string&             _resc_name, 
-                      const std::string&             _curr_host, 
-                      float&                         _out_vote ) {
+                      eirods::plugin_property_map& _prop_map,
+                      eirods::file_object_ptr&     _file_obj,
+                      const std::string&           _resc_name, 
+                      const std::string&           _curr_host, 
+                      float&                       _out_vote ) {
         // =-=-=-=-=-=-=-
         // determine if the resource is down 
         int resc_status = 0;
@@ -1253,13 +1303,13 @@ extern "C" {
 
         // =-=-=-=-=-=-=-
         // make some flags to clairify decision making
-        bool need_repl = ( _file_obj.repl_requested() > -1 );
+        bool need_repl = ( _file_obj->repl_requested() > -1 );
 
         // =-=-=-=-=-=-=-
         // set up variables for iteration
         bool          found     = false;
         eirods::error final_ret = SUCCESS();
-        std::vector< eirods::physical_object > objs = _file_obj.replicas();
+        std::vector< eirods::physical_object > objs = _file_obj->replicas();
         std::vector< eirods::physical_object >::iterator itr = objs.begin();
         
         // =-=-=-=-=-=-=-
@@ -1279,7 +1329,7 @@ extern "C" {
           
             // =-=-=-=-=-=-=-
             // more flags to simplify decision making
-            bool repl_us = ( _file_obj.repl_requested() == itr->repl_num() ); 
+            bool repl_us = ( _file_obj->repl_requested() == itr->repl_num() ); 
             bool resc_us = ( _resc_name == last_resc );
 
             // =-=-=-=-=-=-=-
@@ -1308,7 +1358,7 @@ extern "C" {
     // used to allow the resource to determine which host
     // should provide the requested operation
     eirods::error hpss_file_redirect_plugin( 
-        eirods::resource_operation_context* _ctx,
+        eirods::resource_plugin_context& _ctx,
         const std::string*                  _opr,
         const std::string*                  _curr_host,
         eirods::hierarchy_parser*           _out_parser,
@@ -1316,13 +1366,13 @@ extern "C" {
 
         // =-=-=-=-=-=-=-
         // check the context pointer
-        if( !_ctx ) {
+        if( !_ctx.valid< eirods::file_object >().ok() ) {
             return ERROR( SYS_INVALID_INPUT_PARAM, "hpss_file_mkdir_plugin - invalid resource context" );
         }
          
         // =-=-=-=-=-=-=-
         // check the context validity
-        eirods::error ret = _ctx->valid< eirods::file_object >(); 
+        eirods::error ret = _ctx.valid< eirods::file_object >(); 
         if(!ret.ok()) {
             std::stringstream msg;
             msg << "resource context is invalid";
@@ -1346,12 +1396,13 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // cast down the chain to our understood object type
-        eirods::file_object& file_obj = dynamic_cast< eirods::file_object& >( _ctx->fco() );
-
+        eirods::file_object_ptr file_obj = boost::dynamic_pointer_cast< 
+                                               eirods::file_object >( 
+                                                   _ctx.fco() );
         // =-=-=-=-=-=-=-
         // get the name of this resource
         std::string resc_name;
-        ret = _ctx->prop_map().get< std::string >( eirods::RESOURCE_NAME, resc_name );
+        ret = _ctx.prop_map().get< std::string >( eirods::RESOURCE_NAME, resc_name );
         if( !ret.ok() ) {
             std::stringstream msg;
             msg << "hpss_file_redirect_plugin - failed in get property for name";
@@ -1367,12 +1418,12 @@ extern "C" {
         if( eirods::EIRODS_OPEN_OPERATION == (*_opr) ) {
             // =-=-=-=-=-=-=-
             // call redirect determination for 'get' operation
-            return hpss_file_redirect_open( _ctx->prop_map(), file_obj, resc_name, (*_curr_host), (*_out_vote)  );
+            return hpss_file_redirect_open( _ctx.prop_map(), file_obj, resc_name, (*_curr_host), (*_out_vote)  );
 
         } else if( eirods::EIRODS_CREATE_OPERATION == (*_opr) ) {
             // =-=-=-=-=-=-=-
             // call redirect determination for 'create' operation
-            return hpss_file_redirect_create( _ctx->prop_map(), file_obj, resc_name, (*_curr_host), (*_out_vote)  );
+            return hpss_file_redirect_create( _ctx.prop_map(), file_obj, resc_name, (*_curr_host), (*_out_vote)  );
         }
       
         // =-=-=-=-=-=-=-
@@ -1385,7 +1436,7 @@ extern "C" {
     } // hpss_file_redirect_plugin
 
     eirods::error hpss_file_registered_plugin(
-        eirods::resource_operation_context* _ctx)
+        eirods::resource_plugin_context& _ctx)
     {
         // Check the operation parameters and update the physical path
         eirods::error ret = hpss_check_params_and_path(_ctx);
@@ -1399,7 +1450,7 @@ extern "C" {
     }
     
     eirods::error hpss_file_unregistered_plugin(
-        eirods::resource_operation_context* _ctx)
+        eirods::resource_plugin_context& _ctx)
     {
         // Check the operation parameters and update the physical path
         eirods::error ret = hpss_check_params_and_path(_ctx);
@@ -1413,7 +1464,7 @@ extern "C" {
     }
     
     eirods::error hpss_file_modified_plugin(
-        eirods::resource_operation_context* _ctx)
+        eirods::resource_plugin_context& _ctx)
     {
         // Check the operation parameters and update the physical path
         eirods::error ret = hpss_check_params_and_path(_ctx);
@@ -1564,8 +1615,8 @@ extern "C" {
 
         // =-=-=-=-=-=-=-
         // set some properties necessary for backporting to iRODS legacy code
-        resc->set_property< int >( RESOURCE_CHECK_PATH_PERM, 2 );//DO_CHK_PATH_PERM );
-        resc->set_property< int >( RESOURCE_CREATE_PATH,     1 );//CREATE_PATH );
+        resc->set_property< int >( eirods::RESOURCE_CHECK_PATH_PERM, 2 );//DO_CHK_PATH_PERM );
+        resc->set_property< int >( eirods::RESOURCE_CREATE_PATH,     1 );//CREATE_PATH );
 
         // =-=-=-=-=-=-=-
         // 4c. return the pointer through the generic interface of an
