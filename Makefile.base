@@ -10,9 +10,9 @@ DEPS = $(patsubst %.cpp, ${DEPDIR}/%.d, ${SRCS})
 
 GCC = g++ -DRODS_SERVER 
 
-INC = -I/usr/include/eirods -I/opt/hpss/include -L/opt/hpss/lib 
+INC = -I/usr/include/irods -I/opt/hpss/include -L/opt/hpss/lib -L/usr/
 
-os_platform = linux_os
+OS_platform = linux_os
 
 ifeq ($(EIRODS_BUILD_COVERAGE), 1)
 GCC += -fprofile-arcs -ftest-coverage -lgcov
@@ -33,7 +33,7 @@ clean:
 
 ${FULLTARGET}: ${OBJS} ${DEPFILE}
 	@-mkdir -p ${SODIR} > /dev/null 2>&1
-	${GCC} ${INC} -D${OS_platform} -fPIC "-Wl,-E" -shared -o ${FULLTARGET} ${OBJS} /usr/lib/libeirods.a ${EXTRALIBS}
+	${GCC} ${INC} -D${OS_platform} -fPIC "-Wl,-E" -shared -o ${FULLTARGET} ${OBJS} /usr/lib/libirods.a ${EXTRALIBS} -Wl,-rpath,/opt/hpss/lib
 
 ${DEPFILE}: ${DEPS}
 	@-rm -f ${DEPFILE} > /dev/null 2>&1

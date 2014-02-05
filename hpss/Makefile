@@ -4,7 +4,8 @@ SRCS = libhpss.cpp
 
 HEADERS = 
 
-EXTRALIBS = /opt/hpss/lib/libhpss.so \
-            /opt/hpss/lib/libhpsscs.so
+EXTRALIBS = -lhpss \
+            -lhpsscs \
+            -lboost_filesystem-mt
 
 include ../Makefile.base
