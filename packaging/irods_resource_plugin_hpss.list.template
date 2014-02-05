@@ -1,0 +1,28 @@
+%product IBM HPSS Resource Plugin for iRODS
+%copyright 2014 by Renaissance Computing Institute, All Rights Reserved
+%vendor Renaissance Computing Institute <info@irods-consortium.org>
+%license LICENSE
+%readme README
+%description IBM HPSS Resource Plugin for iRODS
+%version TEMPLATE_PLUGINVERSION TEMPLATE_PLUGINVERSIONINT
+
+%requires irods
+
+%format all
+%if ARCH
+%else
+%requires python
+%endif
+
+# =-=-=-=-=-=-=-
+# variables for configuring the install
+# =-=-=-=-=-=-=-
+$OS_IRODS_ACCT=irods
+$OS_IRODS_HOME_DIR=/var/lib/irods
+
+# =-=-=-=-=-=-=-
+# full file listing
+# =-=-=-=-=-=-=-
+
+f 644 $OS_IRODS_ACCT $OS_IRODS_ACCT ${OS_IRODS_HOME_DIR}/plugins/resources/libhpss.so ./libhpss.so
+f 644 $OS_IRODS_ACCT $OS_IRODS_ACCT ${OS_IRODS_HOME_DIR}/tests/pydevtest/test_irods_resource_plugin_hpss.py ./packaging/test_irods_resource_plugin_hpss.py
