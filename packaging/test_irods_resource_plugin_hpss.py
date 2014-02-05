@@ -23,7 +23,7 @@ class Test_Compound_with_HPSS_Resource(unittest.TestCase, ResourceSuite, ChunkyD
             "iadmin modresc demoResc name origResc",
             "iadmin mkresc demoResc compound",
             "iadmin mkresc cacheResc 'unixfilesystem' "+hostname+":/var/lib/irods/cacheRescVault",
-            "iadmin mkresc archiveResc hpss "+hostname+":/Vault",
+            "iadmin mkresc archiveResc hpss "+hostname+":/irodsVault keytab=/var/hpss/etc/irods.keytab;user=irods",
             "iadmin addchildtoresc demoResc cacheResc cache",
             "iadmin addchildtoresc demoResc archiveResc archive",
         ],
