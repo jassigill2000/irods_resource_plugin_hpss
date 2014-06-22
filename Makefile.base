@@ -33,7 +33,7 @@ clean:
 
 ${FULLTARGET}: ${OBJS} ${DEPFILE}
 	@-mkdir -p ${SODIR} > /dev/null 2>&1
-	${GCC} ${INC} -D${OS_platform} -fPIC "-Wl,-E" -shared -o ${FULLTARGET} ${OBJS} /usr/lib/libirods.a ${EXTRALIBS} -Wl,-rpath,/opt/hpss/lib
+	${GCC} ${INC} -D${OS_platform} -fPIC "-Wl,-E" -shared -o ${FULLTARGET} ${OBJS} /usr/lib/irods/libirods_client.a /usr/lib/irods/libirods_server.a ${EXTRALIBS} -Wl,-rpath,/opt/hpss/lib
 
 ${DEPFILE}: ${DEPS}
 	@-rm -f ${DEPFILE} > /dev/null 2>&1
