@@ -213,6 +213,22 @@ class Test_Compound_with_HPSS_Resource(unittest.TestCase, ResourceSuite, ChunkyD
         os.remove(filepath)
         os.remove(doublefile)
 
+    @unittest.skip("--wlock has possible race condition due to Compound/Replication PDMO")
+    def test_local_iput_collision_with_wlock(self):
+        pass
+
+    @unittest.skip("NOTSURE / FIXME ... -K not supported, perhaps")
+    def test_local_iput_checksum(self):
+        pass
+
+    @unittest.skip("EMPTY_RESC_PATH - no vault path for coordinating resources")
+    def test_ireg_as_rodsuser_in_vault(self):
+        pass
+
+    @unittest.skip("No Vault for HPSS archive resource")
+    def test_iput_overwrite_others_file__ticket_2086(self):
+        pass
+
     def test_iput_with_purgec(self):
         # local setup
         filename = "purgecfile.txt"
