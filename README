@@ -1,10 +1,12 @@
 iRODS HPSS Resource Plugin
 --------------------------
 
+This plugin can be used either as a first class resource or as an archive resource under a compound resource. Please note that bundle and structured file operations will not work in a first class configuration due to those operations making assumptions about an underlying POSIX interface.
+
 To build the HPSS Resource Plugin, you will need to have:
 
  - the iRODS Development Tools (irods-dev) installed for your platform
-     http://eirods.org/download
+     http://irods.org/download
 
  - the HPSS client from IBM
 
