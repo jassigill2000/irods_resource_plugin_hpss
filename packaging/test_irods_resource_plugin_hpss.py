@@ -285,3 +285,8 @@ class Test_Compound_with_HPSS_Resource(unittest.TestCase, ResourceSuite, ChunkyD
         # local cleanup
         output = commands.getstatusoutput( 'rm '+filepath )
 
+    @unittest.skip("HPSS does not have enough freespace")
+    def test_local_iput_with_really_big_file__ticket_1623(self):
+        pass
+
+

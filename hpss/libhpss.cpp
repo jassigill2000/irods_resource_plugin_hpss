@@ -91,7 +91,6 @@ irods::error hpss_generate_full_path(
     const std::string&                  _phy_path,
     std::string&                        _ret_string )
 {
-    std::cerr << __func__ << "\n";
     irods::error result = SUCCESS();
     irods::error ret;
     std::string vault_path;
@@ -120,7 +119,6 @@ irods::error hpss_generate_full_path(
 /// @brief update the physical path in the file object
 irods::error hpss_check_path( 
     irods::resource_plugin_context& _ctx ) {
-    std::cerr << __func__ << "\n";
     // =-=-=-=-=-=-=-
     // dynamic pointer cast
     irods::data_object_ptr data_obj = boost::dynamic_pointer_cast< irods::data_object >( _ctx.fco() );
@@ -147,7 +145,6 @@ irods::error hpss_check_path(
 template< typename DEST_TYPE >
 irods::error hpss_check_params_and_path(
     irods::resource_plugin_context& _ctx ) {
-    std::cerr << __func__ << "\n";    
     irods::error result = SUCCESS();
     irods::error ret;
 
@@ -178,7 +175,6 @@ irods::error hpss_check_params_and_path(
 /// @brief Checks the basic operation parameters and updates the physical path in the file object
 irods::error hpss_check_params_and_path(
     irods::resource_plugin_context& _ctx ) {
-    std::cerr << __func__ << "\n"; 
     irods::error result = SUCCESS();
     irods::error ret;
 
@@ -209,7 +205,6 @@ irods::error hpss_file_mkdir_r(
     const std::string& path,
     mode_t mode ) {
     
-    std::cerr << __func__ << "\n";
     irods::error result = SUCCESS();
     std::string subdir;
     std::size_t pos = 0;
@@ -256,7 +251,6 @@ extern "C" {
     irods::error hpss_start_operation( 
         irods::plugin_property_map& _prop_map,
         irods::resource_child_map&    _cmap ) {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // get the keytab property
         std::string keytab;
@@ -314,7 +308,6 @@ extern "C" {
     irods::error hpss_stop_operation( 
                   irods::plugin_property_map& _prop_map,
                   irods::resource_child_map&    _cmap ) {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         //hpss_PurgeLoginCred();
         return SUCCESS();
@@ -337,7 +330,6 @@ extern "C" {
     // interface for POSIX create
     irods::error hpss_file_create_plugin( 
         irods::resource_plugin_context& _ctx ) { 
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
@@ -373,11 +365,9 @@ extern "C" {
         // =-=-=-=-=-=-=-
         // make call to umask & open for create
         mode_t myMask = umask((mode_t) 0000);
-        rodsLog( LOG_NOTICE, "XXXX - hpss_file_create_plugin :: A" );
         char* phypath = strdup(fco->physical_path().c_str());
         int    fd     = hpss_Open( phypath, O_RDWR|O_CREAT|O_EXCL,
                                    fco->mode(), &hints_in, &hints_pri, &hints_out );
-        rodsLog( LOG_NOTICE, "XXXX - hpss_file_create_plugin :: B" );
 
         // =-=-=-=-=-=-=-
         // reset the old mask 
@@ -418,7 +408,6 @@ extern "C" {
     // interface for POSIX Open
     irods::error hpss_file_open_plugin( 
         irods::resource_plugin_context& _ctx ) { 
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
@@ -483,7 +472,6 @@ extern "C" {
         irods::resource_plugin_context& _ctx,
         void*                               _buf, 
         int                                 _len ) {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
@@ -530,7 +518,6 @@ extern "C" {
         irods::resource_plugin_context& _ctx,
         void*                               _buf, 
         int                                 _len ) {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
@@ -577,7 +564,6 @@ extern "C" {
     // interface for POSIX Close
     irods::error hpss_file_close_plugin(
         irods::resource_plugin_context& _ctx ) { 
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-                               
         // Check the operation parameters and update the physical path
@@ -621,7 +607,6 @@ extern "C" {
     // interface for POSIX Unlink
     irods::error hpss_file_unlink_plugin( 
         irods::resource_plugin_context& _ctx ) { 
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
@@ -666,7 +651,6 @@ extern "C" {
     //
     irods::error hpss_stat_to_stat( struct stat& _stat, const hpss_stat_t& _hpss_stat ) {
 
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         if( !&_stat ) {
             return ERROR( SYS_INVALID_INPUT_PARAM, "invalid stat" );
@@ -699,7 +683,6 @@ extern "C" {
     irods::error hpss_file_stat_plugin( 
         irods::resource_plugin_context& _ctx,
         struct stat*                        _statbuf ) { 
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-
         // NOTE:: this function assumes the object's physical path is 
@@ -725,7 +708,6 @@ extern "C" {
         // make the call to stat
         hpss_stat_t hpss_stat;
         memset( &hpss_stat, 0, sizeof( hpss_stat ) );
-        std::cerr << __func__ << " on " << fco->physical_path() << "\n";
         int status = hpss_Stat( const_cast<char*>( fco->physical_path().c_str() ), &hpss_stat );
         hpss_stat_to_stat( *_statbuf, hpss_stat );
  
@@ -751,7 +733,6 @@ extern "C" {
     irods::error hpss_file_fstat_plugin( 
         irods::resource_plugin_context& _ctx,
         struct stat*                        _statbuf ) {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
@@ -800,7 +781,6 @@ extern "C" {
         irods::resource_plugin_context& _ctx,
         hpss_off_t                          _offset, 
         int                                 _whence ) {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
@@ -844,7 +824,6 @@ extern "C" {
     // interface for POSIX fsync
     irods::error hpss_file_fsync_plugin( 
         irods::resource_plugin_context& _ctx ) { 
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
@@ -890,7 +869,6 @@ extern "C" {
     // interface for POSIX mkdir
     irods::error hpss_file_mkdir_plugin( 
         irods::resource_plugin_context& _ctx ) { 
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=- 
         // NOTE :: this function assumes the object's physical path is correct and 
@@ -946,7 +924,6 @@ extern "C" {
     // interface for POSIX rmdir
     irods::error hpss_file_rmdir_plugin( 
         irods::resource_plugin_context& _ctx ) { 
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
 
         // =-=-=-=-=-=-=-
@@ -960,8 +937,8 @@ extern "C" {
         
         // =-=-=-=-=-=-=-
         // get ref to fco
-        irods::file_object_ptr fco = boost::dynamic_pointer_cast< 
-                                          irods::file_object >( 
+        irods::collection_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          irods::collection_object >( 
                                               _ctx.fco() );
         
         
@@ -991,7 +968,6 @@ extern "C" {
     // interface for POSIX opendir
     irods::error hpss_file_opendir_plugin( 
         irods::resource_plugin_context& _ctx ) { 
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
@@ -1041,7 +1017,6 @@ extern "C" {
     // interface for POSIX closedir
     irods::error hpss_file_closedir_plugin( 
         irods::resource_plugin_context& _ctx ) { 
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
@@ -1084,7 +1059,6 @@ extern "C" {
     irods::error hpss_dirent_to_rods_dirent( 
         const hpss_dirent_t&     _hpss_dirent, 
         struct rodsDirent&       _rods_dirent ) {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-=-
         // 
@@ -1116,7 +1090,6 @@ extern "C" {
     irods::error hpss_file_readdir_plugin( 
         irods::resource_plugin_context& _ctx,
         struct rodsDirent**                 _rods_dirent ) {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
@@ -1184,7 +1157,6 @@ extern "C" {
     irods::error hpss_file_rename_plugin( 
         irods::resource_plugin_context& _ctx,
         const char*                         _new_file_name ) {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=- 
         // Check the operation parameters and update the physical path
@@ -1258,22 +1230,103 @@ extern "C" {
     // interface to determine free space on a device given a path
     irods::error hpss_file_get_fsfreespace_plugin( 
         irods::resource_plugin_context& _ctx ) { 
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         return CODE( SYS_NOT_SUPPORTED );
 
     } // hpss_file_get_fsfreespace_plugin
 
     // =-=-=-=-=-=-=-
-    // unixStageToCache - This routine is for testing the TEST_STAGE_FILE_TYPE.
-    // Just copy the file from filename to cacheFilename. optionalInfo info
-    // is not used.
+    // used to copy file from the HPSS system to the cache disk in a
+    // compound resource
     irods::error hpss_file_stagetocache_plugin( 
         irods::resource_plugin_context& _ctx,
         const char*                         _cache_file_name ) { 
-        std::cerr << __func__ << "\n";
+	// =-=-=-=-=-=-=- 
+        // Check the operation parameters and update the physical path
+        irods::error ret = hpss_check_params_and_path( _ctx );
+        if(!ret.ok()) {
+            std::stringstream msg;
+            msg << "Invalid parameters or physical path.";
+            return PASSMSG(msg.str(), ret);
+        }
+
         // =-=-=-=-=-=-=-
-        return CODE( SYS_NOT_SUPPORTED );
+        // get ref to fco
+        irods::file_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          irods::file_object >( 
+                                              _ctx.fco() );
+        irods::file_object_ptr fobj( 
+                                   new irods::file_object( 
+                                       *fco.get() ) );
+
+        std::string name;
+        ret = _ctx.prop_map().get< std::string >( irods::RESOURCE_NAME, name );
+        if( !ret.ok() ) {
+            return PASS( ret );
+        }
+
+        // we need to repave the hier with the resc name so
+        // the compound resource doesnt throw a DIRECT_ARCHIVE_ACCESS 
+        // error
+        fobj->resc_hier( name );
+
+        ret = fileOpen( _ctx.comm(), fobj );
+        if( !ret.ok() ) {
+            return PASS( ret );
+        }
+        fobj->file_descriptor( ret.code() );
+
+        int cache_fd = open( _cache_file_name, O_RDWR|O_CREAT, fobj->mode() );
+        if( cache_fd < 0 ) {
+            std::string msg( "failed to open cache file [" );
+            msg += _cache_file_name;
+            msg += "]";
+            ret = fileClose( _ctx.comm(), fobj );
+	    if( !ret.ok() ) {
+                msg += ", hpss file failed to close";
+            }
+            return ERROR( 
+                       SYS_INVALID_INPUT_PARAM, 
+                       msg );
+        }
+
+        int bytes_read = 0;
+        char read_buf[ TRANS_BUF_SZ ];
+        ret = fileRead( 
+                  _ctx.comm(), 
+                  fobj, 
+                  read_buf, 
+                  TRANS_BUF_SZ );
+        bytes_read = ret.code();
+        while( ret.ok() && bytes_read > 0 ) {
+            int bytes_written = write( 
+                                    cache_fd,
+                                    (void*)read_buf,
+                                    bytes_read );
+            if( bytes_written <= 0 ) {
+                ret = ERROR(
+                          FILE_WRITE_ERR,
+                          "failed to write to cache file" );
+                break;
+            }
+
+            ret = fileRead( 
+                      _ctx.comm(), 
+                      fobj, 
+                      read_buf, 
+                      TRANS_BUF_SZ );
+            bytes_read = ret.code();
+            if( !ret.ok() ) {
+                ret = PASS( ret );
+                break;
+            }
+
+        } // while
+
+        close( cache_fd );
+        fileClose( _ctx.comm(), fobj );
+
+        return ret;
 
     } // hpss_file_stagetocache_plugin
 
@@ -1284,7 +1337,87 @@ extern "C" {
     irods::error hpss_file_synctoarch_plugin( 
         irods::resource_plugin_context& _ctx,
         char*                               _cache_file_name ) {
-        return CODE( SYS_NOT_SUPPORTED );
+	// =-=-=-=-=-=-=- 
+        // Check the operation parameters and update the physical path
+        irods::error ret = hpss_check_params_and_path( _ctx );
+        if(!ret.ok()) {
+            std::stringstream msg;
+            msg << "Invalid parameters or physical path.";
+            return PASSMSG(msg.str(), ret);
+        }
+
+        // =-=-=-=-=-=-=-
+        // get ref to fco
+        irods::file_object_ptr fco = boost::dynamic_pointer_cast< 
+                                          irods::file_object >( 
+                                              _ctx.fco() );
+        irods::file_object_ptr fobj( 
+                                   new irods::file_object( 
+                                       *fco.get() ) );
+        std::string name;
+        ret = _ctx.prop_map().get< std::string >( irods::RESOURCE_NAME, name );
+        if( !ret.ok() ) {
+            return PASS( ret );
+        }
+
+        // we need to repave the hier with the resc name so
+        // the compound resource doesnt throw a DIRECT_ARCHIVE_ACCESS 
+        // error
+        fobj->resc_hier( name );
+
+
+        ret = fileCreate( _ctx.comm(), fobj );
+        if( !ret.ok() ) {
+            ret = fileOpen( _ctx.comm(), fobj );
+            if( !ret.ok() ) {
+                return PASS( ret );
+            }
+        }
+        fobj->file_descriptor( ret.code() );
+
+        int cache_fd = open( _cache_file_name, O_RDONLY, 0 );
+        if( cache_fd < 0 ) {
+            std::string msg( "failed to open cache file [" );
+            msg += _cache_file_name;
+            msg += "]";
+            ret = fileClose( _ctx.comm(), fobj );
+	    if( !ret.ok() ) {
+                msg += ", hpss file failed to close";
+            }
+            return ERROR( 
+                       SYS_INVALID_INPUT_PARAM, 
+                       msg );
+        }
+
+        int bytes_read = 0;
+        char read_buf[ TRANS_BUF_SZ ];
+        bytes_read = read( 
+                         cache_fd, 
+                         (void*)read_buf,
+                         TRANS_BUF_SZ );
+        while( ret.ok() && bytes_read > 0 ) {
+            ret = fileWrite( 
+                      _ctx.comm(),
+                      fobj,
+                      (void*)read_buf,
+                      bytes_read );
+            if( !ret.ok() ) {
+                ret = PASS( ret );
+                break;
+            } 
+        
+            bytes_read = read( 
+                             cache_fd, 
+                             (void*)read_buf,
+                             TRANS_BUF_SZ );
+            
+        } // while
+
+        close( cache_fd );
+        fileClose( _ctx.comm(), fobj );
+
+        return ret;
+
 
     } // hpss_file_synctoarch_plugin
 
@@ -1296,7 +1429,6 @@ extern "C" {
                       const std::string&           _resc_name, 
                       const std::string&           _curr_host, 
                       float&                       _out_vote ) {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-
         // determine if the resource is down 
@@ -1328,7 +1460,6 @@ extern "C" {
         } else {
             _out_vote = 0.5;
         }
-        std::cerr << std::string(__func__) + " out_vote " << _out_vote << "\n";
 
         return SUCCESS();
 
@@ -1342,7 +1473,6 @@ extern "C" {
                       const std::string&           _resc_name, 
                       const std::string&           _curr_host, 
                       float&                       _out_vote ) {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // =-=-=-=-=-=-=-
         // determine if the resource is down 
@@ -1433,11 +1563,10 @@ extern "C" {
         const std::string*                  _curr_host,
         irods::hierarchy_parser*           _out_parser,
         float*                              _out_vote ) {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // check the context pointer
         if( !_ctx.valid< irods::file_object >().ok() ) {
-            return ERROR( SYS_INVALID_INPUT_PARAM, "hpss_file_mkdir_plugin - invalid resource context" );
+            return ERROR( SYS_INVALID_INPUT_PARAM, "invalid resource context" );
         }
          
         // =-=-=-=-=-=-=-
@@ -1509,7 +1638,6 @@ extern "C" {
     irods::error hpss_file_registered_plugin(
         irods::resource_plugin_context& _ctx)
     {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
         irods::error ret = hpss_check_params_and_path(_ctx);
@@ -1525,7 +1653,6 @@ extern "C" {
     irods::error hpss_file_unregistered_plugin(
         irods::resource_plugin_context& _ctx)
     {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
         irods::error ret = hpss_check_params_and_path(_ctx);
@@ -1541,7 +1668,6 @@ extern "C" {
     irods::error hpss_file_modified_plugin(
         irods::resource_plugin_context& _ctx)
     {
-        std::cerr << __func__ << "\n";
         // =-=-=-=-=-=-=-
         // Check the operation parameters and update the physical path
         irods::error ret = hpss_check_params_and_path(_ctx);
@@ -1565,7 +1691,7 @@ extern "C" {
     //    necessary to do custom parsing of the context string to place
     //    any useful values into the property map for reference in later
     //    operations.  semicolon is the preferred delimiter
-    class unixfilesystem_resource : public irods::resource {
+    class hpss_resource : public irods::resource {
         // =-=-=-=-=-=-=-
         // 3a. create a class to provide maintenance operations, this is only for example
         //     and will not be called.
@@ -1584,7 +1710,7 @@ extern "C" {
             }
 
             irods::error operator()( rcComm_t* ) {
-                rodsLog( LOG_NOTICE, "unixfilesystem_resource::post_disconnect_maintenance_operation - [%s]", 
+                rodsLog( LOG_NOTICE, "hpss_resource::post_disconnect_maintenance_operation - [%s]", 
                 name_.c_str() );
                 return SUCCESS();
             }
@@ -1595,7 +1721,7 @@ extern "C" {
         }; // class maintenance_operation
 
     public:
-        unixfilesystem_resource( const std::string& _inst_name, 
+        hpss_resource( const std::string& _inst_name, 
                                  const std::string& _context ) : 
             irods::resource( _inst_name, _context ) {
            
@@ -1616,7 +1742,6 @@ extern "C" {
                 // tokenize context string into key/val pairs assuming a ; as a separator
                 std::vector< std::string > key_vals;
                 irods::string_tokenize( _context, ";", key_vals );
-                std::cerr << "context: " << _context << "\n";
 
                 // =-=-=-=-=-=-=-
                 // tokenize each key/val pair using = as a separator and
@@ -1632,9 +1757,6 @@ extern "C" {
                         // =-=-=-=-=-=-=-
                         // break up key and value into two strings
                         if( vals.size() == 2 ) {
-                            std::cerr << "key: [" << vals[0] << "]\n";
-                            std::cerr << "value: [" << vals[1] << "]\n";
-                            //properties_[ vals[0] ] = vals[1];
                             set_property< std::string >(vals[0], vals[1]);
                         } else {
                             // this would be an error case  
@@ -1662,7 +1784,7 @@ extern "C" {
             return ERROR( -1, "nop" );
         }
 
-    }; // class unixfilesystem_resource
+    }; // class hpss_resource
   
     // =-=-=-=-=-=-=-
     // 4. create the plugin factory function which will return a dynamically
@@ -1674,8 +1796,8 @@ extern "C" {
     irods::resource* plugin_factory( const std::string& _inst_name, const std::string& _context  ) {
 
         // =-=-=-=-=-=-=-
-        // 4a. create unixfilesystem_resource
-        unixfilesystem_resource* resc = new unixfilesystem_resource( _inst_name, _context );
+        // 4a. create hpss_resource
+        hpss_resource* resc = new hpss_resource( _inst_name, _context );
 
         // =-=-=-=-=-=-=-
         // 4b. map function names to operations.  this map will be used to load
