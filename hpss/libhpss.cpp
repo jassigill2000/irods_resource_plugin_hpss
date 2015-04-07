@@ -297,9 +297,10 @@ extern "C" {
         }
         else {
             rodsLog(
-                "unknown authentication mechanism [%s]. Defaulting to Unix.\n"
+                LOG_ERROR,
+                "unknown authentication mechanism [%s]. Defaulting to Unix.\n",
                 mechanisim.c_str() );
-                mech=hpss_authn_mech_unix;
+            mech=hpss_authn_mech_unix;
         }
         
         // =-=-=-=-=-=-=-
