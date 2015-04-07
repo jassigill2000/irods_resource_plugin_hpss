@@ -254,7 +254,9 @@ extern "C" {
         // =-=-=-=-=-=-=-
         // get the keytab property
         std::string keytab;
-        irods::error err = _prop_map.get< std::string >( "keytab", keytab );
+        irods::error err = _prop_map.get< std::string >( 
+                               "keytab", 
+                               keytab );
         if( !err.ok() ) {
             return PASS( err );
         }
@@ -263,6 +265,14 @@ extern "C" {
         // get the user property
         std::string user;
         err = _prop_map.get< std::string >( "user", user );
+        if( !err.ok() ) {
+            return PASS( err );
+        }
+
+        // =-=-=-=-=-=-=-
+        // get the mechanism property
+        std::string mechanisim;
+        err = _prop_map.get< std::string >( "mech", mechanisim );
         if( !err.ok() ) {
             return PASS( err );
         }
@@ -278,14 +288,27 @@ extern "C" {
           return ERROR( errno, msg.str() ); 
         }
 
-
+        hpss_authn_mech_t mech;
+        if( "unix" == mechanisim ) {
+            mech=hpss_authn_mech_unix;
+        } 
+        else if( "krb" == mechanisim ) {
+            mech=hpss_authn_mech_krb5;
+        }
+        else {
+            rodsLog(
+                "unknown authentication mechanism [%s]. Defaulting to Unix.\n"
+                mechanisim.c_str() );
+                mech=hpss_authn_mech_unix;
+        }
+        
         // =-=-=-=-=-=-=-
         // call the login
-	int status = hpss_SetLoginCred( const_cast<char*>( user.c_str() ),
-                                        hpss_authn_mech_unix,
-                                        hpss_rpc_cred_client,
-                                        hpss_rpc_auth_type_keytab,
-                                        const_cast<char*>( keytab.c_str() ) );
+	    int status = hpss_SetLoginCred( const_cast<char*>( user.c_str() ),
+                         mech,
+                         hpss_rpc_cred_client,
+                         hpss_rpc_auth_type_keytab,
+                         const_cast<char*>( keytab.c_str() ) );
         if( status < 0 ) {
 	    std::stringstream msg;
             msg << "Could not authenticate [";
@@ -294,7 +317,7 @@ extern "C" {
             msg << keytab;
             msg << "]";
             return ERROR( status, msg.str() );
-	}
+	    }
 
         // =-=-=-=-=-=-=-
         // win

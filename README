@@ -18,6 +18,6 @@ Then to build this resource plugin:
 
 To use this resource plugin:
 
-  irods@hostname $ iadmin mkresc archiveResc hpss <hostname>:<VaultName> keytab=/var/hpss/etc/irods.keytab;user=irods
+  irods@hostname $ iadmin mkresc archiveResc hpss <hostname>:<VaultName> keytab=/var/hpss/etc/irods.keytab;user=irods;mech=[unix,krb]
 
 
