@@ -320,9 +320,8 @@ extern "C" {
             msg << mechanisim;
             msg << "] and status ";
             msg << status;
-
             return ERROR( status, msg.str() );
-	    }
+	}
 
         // =-=-=-=-=-=-=-
         // win
