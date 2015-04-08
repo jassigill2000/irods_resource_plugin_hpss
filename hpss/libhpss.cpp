@@ -311,12 +311,16 @@ extern "C" {
                          hpss_rpc_auth_type_keytab,
                          const_cast<char*>( keytab.c_str() ) );
         if( status < 0 ) {
-	    std::stringstream msg;
+	        std::stringstream msg;
             msg << "Could not authenticate [";
             msg << user;
             msg << "] using keytab [";
             msg << keytab;
-            msg << "]";
+            msg << "] with mechanism [";
+            msg << mechanisim;
+            msg << "] and status ";
+            msg << status;
+
             return ERROR( status, msg.str() );
 	    }
 
