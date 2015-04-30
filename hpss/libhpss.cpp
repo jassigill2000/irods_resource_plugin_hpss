@@ -76,6 +76,8 @@ extern "C" {
 #include <hpss_Getenv.h>
 #include <hpss_limits.h>
 }
+        
+#define TRANS_BUF_SZ 4*1024*1024
 
 // =-=-=-=-=-=-=-
 // 2. Define utility functions that the operations might need
@@ -271,10 +273,10 @@ extern "C" {
 
         // =-=-=-=-=-=-=-
         // get the mechanism property
-        std::string mechanisim;
+        std::string mechanisim( "unix" );
         err = _prop_map.get< std::string >( "mech", mechanisim );
         if( !err.ok() ) {
-            return PASS( err );
+            // may be missing
         }
 
         // =-=-=-=-=-=-=-
@@ -715,17 +717,11 @@ extern "C" {
         // NOTE:: this function assumes the object's physical path is 
         //        correct and should not have the vault path 
         //        prepended - hcj
-        if( !_ctx.valid< irods::data_object_ptr >().ok() ) {
-            return ERROR( SYS_INVALID_INPUT_PARAM, "hpss_file_stat_plugin - invalid resource context" );
+        irods::error ret = _ctx.valid<irods::data_object>(); 
+        if( !ret.ok() ) {
+            return PASS( ret );
         }
          
-        irods::error ret = _ctx.valid(); 
-        if(!ret.ok()) {
-            std::stringstream msg;
-            msg << "resource context is invalid";
-            return PASSMSG( msg.str(), ret );
-        }
-        
         // =-=-=-=-=-=-=-
         // get ref to fco
         irods::data_object_ptr fco = boost::dynamic_pointer_cast< 

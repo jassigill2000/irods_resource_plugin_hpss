@@ -23,7 +23,7 @@ class Test_Compound_with_HPSS_Resource(ResourceSuite, ChunkyDevTest, unittest.Te
             admin_session.assert_icommand("iadmin modresc demoResc name origResc", 'STDOUT_SINGLELINE', 'rename', stdin_string='yes\n')
             admin_session.assert_icommand("iadmin mkresc demoResc compound", 'STDOUT_SINGLELINE', 'compound')
             admin_session.assert_icommand("iadmin mkresc cacheResc 'unixfilesystem' "+hostname+":/var/lib/irods/cacheRescVault", 'STDOUT_SINGLELINE', 'unixfilesystem')
-            admin_session.assert_icommand("iadmin mkresc archiveResc hpss "+hostname+":/irodsVault keytab=/var/hpss/etc/irods.keytab;user=irods;mech=unix", 'STDOUT_SINGLELINE', 'hpss')
+            admin_session.assert_icommand('iadmin mkresc archiveResc hpss '+hostname+':/irodsVault "keytab=/var/hpss/etc/irods.keytab;user=irods;mech=unix"', 'STDOUT_SINGLELINE', 'hpss')
             admin_session.assert_icommand("iadmin addchildtoresc demoResc cacheResc cache")
             admin_session.assert_icommand("iadmin addchildtoresc demoResc archiveResc archive")
         super(Test_Compound_with_HPSS_Resource, self).setUp()
