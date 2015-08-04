@@ -79,6 +79,14 @@ extern "C" {
         
 #define TRANS_BUF_SZ 4*1024*1024
 
+
+// locally define the interface version function in order to
+// no longer need to link against the irods client interface
+double get_plugin_interface_version() {
+    static const double PLUGIN_INTERFACE_VERSION = 1.0;
+    return PLUGIN_INTERFACE_VERSION;
+}
+
 // =-=-=-=-=-=-=-
 // 2. Define utility functions that the operations might need
 
@@ -86,16 +94,108 @@ extern "C" {
 // NOTE: All storage resources must do this on the physical path stored in the file object and then update 
 //       the file object's physical path with the full path
 
+#define isutf(c) (((c)&0xC0)!=0x80)
+
+static const u_int32_t offsetsFromUTF8[6] = {
+        0x00000000UL, 0x00003080UL, 0x000E2080UL,
+            0x03C82080UL, 0xFA082080UL, 0x82082080UL
+};
+
+/* reads the next utf-8 sequence out of a string, updating an index */
+static u_int32_t u8_nextchar(const char *s, int *i)
+{
+    u_int32_t ch = 0;
+    int sz = 0;
+
+    do {
+        ch <<= 6;
+        ch += (unsigned char)s[(*i)++];
+        sz++;
+    } while (s[*i] && !isutf(s[*i]));
+    ch -= offsetsFromUTF8[sz-1];
+
+    return ch;
+}
+
+static int u8_escape_wchar(char *buf, int sz, u_int32_t ch)
+{
+    if (ch == L'\n')
+        return snprintf(buf, sz, "\\n");                                                                                                                                                                                                      
+    else if (ch == L'\t')                                                                                                                                                                                                                     
+        return snprintf(buf, sz, "\\t");                                                                                                                                                                                                      
+    else if (ch == L'\r')                                                                                                                                                                                                                     
+        return snprintf(buf, sz, "\\r");                                                                                                                                                                                                      
+    else if (ch == L'\b')                                                                                                                                                                                                                     
+        return snprintf(buf, sz, "\\b");                                                                                                                                                                                                      
+    else if (ch == L'\f')
+        return snprintf(buf, sz, "\\f");                                                                                                                                                                                                      
+    else if (ch == L'\v')
+        return snprintf(buf, sz, "\\v");
+    else if (ch == L'\a')
+        return snprintf(buf, sz, "\\a");
+    else if (ch == L'\\')                                                                                                                                                                                                                     
+        return snprintf(buf, sz, "\\\\");
+    else if (ch < 32 || ch == 0x7f)
+        return snprintf(buf, sz, "\\x%hhX", (unsigned char)ch);                                                                                                                                                                               
+    else if (ch > 0xFFFF)
+        return snprintf(buf, sz, "\\U%.8X", (u_int32_t)ch);                                                                                                                                                                                   
+    else if (ch >= 0x80 && ch <= 0xFFFF)                                                                                                                                                                                                      
+        return snprintf(buf, sz, "\\u%.4hX", (unsigned short)ch);                                                                                                                                                                             
+
+    return snprintf(buf, sz, "%c", (char)ch);
+}       
+        
+static int u8_escape(char *buf, int sz, const char *src, int escape_quotes)
+{       
+    int c=0, i=0, amt;                                                                                                                                                                                                                        
+
+    while (src[i] && c < sz) {                                                                                                                                                                                                                
+        if (escape_quotes && src[i] == '"') {
+            amt = snprintf(buf, sz - c, "\\\"");
+            i++;
+        }
+        else {                                                                                                                                                                                                                                
+            amt = u8_escape_wchar(buf, sz - c, u8_nextchar(src, &i));                                                                                                                                                                         
+        }
+        c += amt;                                                                                                                                                                                                                             
+        buf += amt;
+    }   
+    if (c < sz)
+        *buf = '\0';
+    return c;                                                                                                                                                                                                                                 
+}
+
+bool is_string_escaped( const std::string& _str ) {
+    std::string::size_type pos = _str.find( "\\U" );
+    if( std::string::npos == pos ) {
+        pos = _str.find( "\\u" );
+        if( std::string::npos == pos ) {
+            return false;
+        }
+    }
+    return true;
+
+} // needs_escaped
+
 // =-=-=-=-=-=-=-
 /// @brief Generates a full path name from the partial physical path and the specified resource's vault path
+#define MAXBUF 65536
 irods::error hpss_generate_full_path(
-    irods::plugin_property_map&      _prop_map,
-    const std::string&                  _phy_path,
-    std::string&                        _ret_string )
+    irods::plugin_property_map& _prop_map,
+    const std::string&          _phy_path,
+    std::string&                _ret_string )
 {
     irods::error result = SUCCESS();
     irods::error ret;
     std::string vault_path;
+
+    char escaped_path[MAXBUF];
+    if( is_string_escaped(_phy_path) ) {
+        snprintf( escaped_path, MAXBUF, "%s", _phy_path.c_str() );
+    } else {
+        u8_escape(escaped_path,MAXBUF,_phy_path.c_str(),1);
+    }
+
     // TODO - getting vault path by property will not likely work for coordinating nodes
     ret = _prop_map.get<std::string>( irods::RESOURCE_PATH, vault_path );
     if(!ret.ok()) {
@@ -106,10 +206,10 @@ irods::error hpss_generate_full_path(
         if(_phy_path.compare(0, 1, "/") != 0 &&
            _phy_path.compare(0, vault_path.size(), vault_path) != 0) {
             _ret_string  = vault_path;
-            _ret_string += _phy_path;
+            _ret_string += escaped_path;
         } else {
             // The physical path already contains the vault path
-            _ret_string = _phy_path;
+            _ret_string = escaped_path;
         }
     }
     
@@ -202,21 +302,43 @@ irods::error hpss_check_params_and_path(
 // =-=-=-=-=-=-=- 
 //@brief Recursively make all of the dirs in the path
 irods::error hpss_file_mkdir_r( 
-    rsComm_t*                      _comm,
-    const std::string&             _results,
+    rsComm_t*          _comm,
+    const std::string& _results,
     const std::string& path,
     mode_t mode ) {
     
     irods::error result = SUCCESS();
-    std::string subdir;
+    std::string subdir = path;
     std::size_t pos = 0;
     bool done = false;
     while(!done && result.ok()) {
-        pos = path.find_first_of('/', pos + 1);
+        subdir = path;
+        pos = subdir.find_first_of('/', pos + 1);
+        if(pos == std::string::npos) {
+            done = true;
+        }
+
         if(pos > 0) {
-            subdir = path.substr(0, pos);
-            int status = hpss_Mkdir( const_cast<char*>( subdir.c_str() ), mode );
-            
+            subdir = subdir.substr(0, pos);
+
+            // determine if the component already exists
+            hpss_stat_t stat_buf;
+            int status =  hpss_Stat( const_cast<char*>( subdir.c_str() ), &stat_buf );
+            if( 0 == status ) {
+                continue;
+            } else if( status < 0 ) {
+                if( abs(status) != ENOENT) { // create the dir on ENOENT
+			std::string msg = "failed to call stat for ";
+			msg += subdir;
+			result = ERROR(
+				     status,
+				     msg );
+			done = true; 
+                }
+            }
+
+            status = hpss_Mkdir( const_cast<char*>( subdir.c_str() ), mode );
+
             // =-=-=-=-=-=-=-
             // handle error cases
             if( status < 0 && (-status) != EEXIST && (-status) != EACCES ) {
@@ -231,9 +353,6 @@ irods::error hpss_file_mkdir_r(
                 result = ERROR( -status, msg.str() );
             }
         }
-        if(pos == std::string::npos) {
-            done = true;
-        }
     }
     
     return result;
@@ -241,12 +360,6 @@ irods::error hpss_file_mkdir_r(
 } // hpss_file_mkdir_r
 
 extern "C" {
-    // =-=-=-=-=-=-=-
-    // 1. Define plugin Version Variable, used in plugin
-    //    creation when the factory function is called.
-    //    -- currently only 1.0 is supported.
-    double IRODS_PLUGIN_INTERFACE_VERSION=1.0;
-
     // =-=-=-=-=-=-=-
     /// @brief used for authentication to the hpss server
     ///        for this agent / session
@@ -1354,9 +1467,7 @@ extern "C" {
     } // hpss_file_stagetocache_plugin
 
     // =-=-=-=-=-=-=-
-    // unixSyncToArch - This routine is for testing the TEST_STAGE_FILE_TYPE.
-    // Just copy the file from cacheFilename to filename. optionalInfo info
-    // is not used.
+    //
     irods::error hpss_file_synctoarch_plugin( 
         irods::resource_plugin_context& _ctx,
         char*                               _cache_file_name ) {
@@ -1383,11 +1494,27 @@ extern "C" {
             return PASS( ret );
         }
 
+        // =-=-=-=-=-=-=- 
         // we need to repave the hier with the resc name so
         // the compound resource doesnt throw a DIRECT_ARCHIVE_ACCESS 
         // error
         fobj->resc_hier( name );
 
+        // =-=-=-=-=-=-=- 
+        // make the directories in the path to the new file
+        std::string new_path = fco->physical_path();
+        std::size_t last_slash = new_path.find_last_of('/');
+        new_path.erase(last_slash);
+        ret = hpss_file_mkdir_r( _ctx.comm(), "", new_path.c_str(), 0750 );
+        if(!ret.ok()) {
+
+            std::stringstream msg;
+            msg << "mkdir error for ";
+            msg << new_path;
+
+            return PASSMSG( msg.str(), ret);
+
+        }
 
         ret = fileCreate( _ctx.comm(), fobj );
         if( !ret.ok() ) {
