@@ -1709,6 +1709,12 @@ extern "C" {
         return SUCCESS();
     }
 
+    irods::error hpss_file_rebalance(
+        irods::resource_plugin_context& _ctx ) {
+        return SUCCESS();
+
+    } // hpss_file_rebalance
+
     // =-=-=-=-=-=-=-
     // 3. create derived class to handle unix file system resources
     //    necessary to do custom parsing of the context string to place
@@ -1849,6 +1855,7 @@ extern "C" {
         resc->add_operation( irods::RESOURCE_OP_UNREGISTERED, "hpss_file_unregistered_plugin" );
         resc->add_operation( irods::RESOURCE_OP_MODIFIED,     "hpss_file_modified_plugin" );
         resc->add_operation( irods::RESOURCE_OP_NOTIFY,       "hpss_file_notify_plugin" );
+        resc->add_operation( irods::RESOURCE_OP_REBALANCE,    "hpss_file_rebalance" );
 
         resc->add_operation( irods::RESOURCE_OP_RESOLVE_RESC_HIER,     "hpss_file_redirect_plugin" );
 

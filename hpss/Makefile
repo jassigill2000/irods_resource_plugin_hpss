@@ -8,6 +8,6 @@ EXTRALIBS = -lhpss \
             -lhpsscs \
             -lhpsskrb5auth \
             -lhpssunixauth \
-            -lboost_filesystem-mt
+            -lboost_filesystem
 
 include ../Makefile.base
