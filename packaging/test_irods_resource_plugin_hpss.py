@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import commands
 import os
 import re
@@ -14,7 +16,7 @@ else:
 import lib
 from resource_suite import ResourceSuite
 from test_chunkydevtest import ChunkyDevTest
-
+import filecmp
 
 class Test_Compound_with_HPSS_Resource(ResourceSuite, ChunkyDevTest, unittest.TestCase):
     def setUp(self):
@@ -38,6 +40,46 @@ class Test_Compound_with_HPSS_Resource(ResourceSuite, ChunkyDevTest, unittest.Te
             admin_session.assert_icommand("iadmin rmresc demoResc")
             admin_session.assert_icommand("iadmin modresc origResc name demoResc", 'STDOUT_SINGLELINE', 'rename', stdin_string='yes\n')
         shutil.rmtree(lib.get_irods_top_level_dir() + "/cacheRescVault", ignore_errors=True)
+
+    def test_utf8_encoding(self):
+        filename = "test_file_for_test_utf8_encoding.txt"
+        filepath = lib.create_local_testfile(filename)
+
+        name = u"ედუარდშევარდნაძე"
+        p = subprocess.Popen(['iput','-f',filepath,name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, errors = p.communicate()
+        assert p.returncode == 0, p.returncode 
+        assert not output, output
+        assert not errors, errors
+
+        p = subprocess.Popen(['ils','-l',name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, errors = p.communicate()
+        assert p.returncode == 0, p.returncode 
+        assert not errors, errors
+        print output
+
+        p = subprocess.Popen(['itrim','-n0','-N1',name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, errors = p.communicate()
+        assert p.returncode == 0, p.returncode 
+        assert not output, output
+        assert not errors, errors
+
+        p = subprocess.Popen(['iget','-f',name,'mylocaltestfile'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, errors = p.communicate()
+        assert not output, output
+        assert not errors, errors
+        assert p.returncode == 0, p.returncode 
+   
+        assert filecmp.cmp(filepath,'mylocaltestfile')
+
+        p = subprocess.Popen(['irm','-f',name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, errors = p.communicate()
+        assert p.returncode == 0, p.returncode 
+        assert not output, output
+        assert not errors, errors
+
+        os.remove(filepath)
+        os.remove('mylocaltestfile')
 
     def test_irm_specific_replica(self):
         self.admin.assert_icommand("ils -L "+self.testfile,'STDOUT_SINGLELINE',self.testfile) # should be listed
