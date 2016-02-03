@@ -14,6 +14,10 @@
 %requires python
 %endif
 
+# =-=-=-=-=-=-=-
+# variables for configuring the install
+# =-=-=-=-=-=-=-
+$OS_IRODS_HOME_DIR=/var/lib/irods
 
 # =-=-=-=-=-=-=-
 # preinstall
@@ -30,14 +34,18 @@ END_PREINSTALL
 
 
 # =-=-=-=-=-=-=-
-# variables for configuring the install
+# postinstall
 # =-=-=-=-=-=-=-
-$OS_IRODS_ACCT=irods
-$OS_IRODS_HOME_DIR=/var/lib/irods
+%postinstall << END_POSTINSTALL
+. /etc/irods/service_account.config 2> /dev/null
+chown $$IRODS_SERVICE_ACCOUNT_NAME:$$IRODS_SERVICE_GROUP_NAME ${OS_IRODS_HOME_DIR}/plugins/resources/libhpss.so
+chown $$IRODS_SERVICE_ACCOUNT_NAME:$$IRODS_SERVICE_GROUP_NAME ${OS_IRODS_HOME_DIR}/tests/pydevtest/test_irods_resource_plugin_hpss.py
+END_POSTINSTALL
+
 
 # =-=-=-=-=-=-=-
 # full file listing
 # =-=-=-=-=-=-=-
 
-f 644 $OS_IRODS_ACCT $OS_IRODS_ACCT ${OS_IRODS_HOME_DIR}/plugins/resources/libhpss.so ./libhpss.so
-f 644 $OS_IRODS_ACCT $OS_IRODS_ACCT ${OS_IRODS_HOME_DIR}/tests/pydevtest/test_irods_resource_plugin_hpss.py ./packaging/test_irods_resource_plugin_hpss.py
+f 644 root root ${OS_IRODS_HOME_DIR}/plugins/resources/libhpss.so ./libhpss.so
+f 644 root root ${OS_IRODS_HOME_DIR}/tests/pydevtest/test_irods_resource_plugin_hpss.py ./packaging/test_irods_resource_plugin_hpss.py
