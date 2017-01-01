@@ -13,16 +13,19 @@ if sys.version_info >= (2,7):
 else:
     import unittest2 as unittest
 
-import lib
-from resource_suite import ResourceSuite
-from test_chunkydevtest import ChunkyDevTest
+from .resource_suite import ResourceSuite
+from .test_chunkydevtest import ChunkyDevTest
 import filecmp
+
+from ..configuration import IrodsConfig
+from . import session
+from .. import lib
 
 class Test_Compound_with_HPSS_Resource(ResourceSuite, ChunkyDevTest, unittest.TestCase):
     def setUp(self):
         hostname = lib.get_hostname()
-        with lib.make_session_for_existing_admin() as admin_session:
-            admin_session.assert_icommand("iadmin modresc demoResc name origResc", 'STDOUT_SINGLELINE', 'rename', stdin_string='yes\n')
+        with session.make_session_for_existing_admin() as admin_session:
+            admin_session.assert_icommand("iadmin modresc demoResc name origResc", 'STDOUT_SINGLELINE', 'rename', input='yes\n')
             admin_session.assert_icommand("iadmin mkresc demoResc compound", 'STDOUT_SINGLELINE', 'compound')
             admin_session.assert_icommand("iadmin mkresc cacheResc 'unixfilesystem' "+hostname+":/var/lib/irods/cacheRescVault", 'STDOUT_SINGLELINE', 'unixfilesystem')
             admin_session.assert_icommand('iadmin mkresc archiveResc hpss '+hostname+':/irodsVault "keytab=/var/hpss/etc/irods.keytab;user=irods;mech=unix"', 'STDOUT_SINGLELINE', 'hpss')
@@ -32,14 +35,15 @@ class Test_Compound_with_HPSS_Resource(ResourceSuite, ChunkyDevTest, unittest.Te
 
     def tearDown(self):
         super(Test_Compound_with_HPSS_Resource, self).tearDown()
-        with lib.make_session_for_existing_admin() as admin_session:
+        with session.make_session_for_existing_admin() as admin_session:
             admin_session.assert_icommand("iadmin rmchildfromresc demoResc archiveResc")
             admin_session.assert_icommand("iadmin rmchildfromresc demoResc cacheResc")
             admin_session.assert_icommand("iadmin rmresc archiveResc")
             admin_session.assert_icommand("iadmin rmresc cacheResc")
             admin_session.assert_icommand("iadmin rmresc demoResc")
-            admin_session.assert_icommand("iadmin modresc origResc name demoResc", 'STDOUT_SINGLELINE', 'rename', stdin_string='yes\n')
-        shutil.rmtree(lib.get_irods_top_level_dir() + "/cacheRescVault", ignore_errors=True)
+            admin_session.assert_icommand("iadmin modresc origResc name demoResc", 'STDOUT_SINGLELINE', 'rename', input='yes\n')
+        irods_config = IrodsConfig()
+        shutil.rmtree(irods_config.irods_directory + "/cacheRescVault", ignore_errors=True)
 
     @unittest.skip('Test framework failing to handling unicode')
     def test_utf8_encoding(self):
@@ -49,19 +53,19 @@ class Test_Compound_with_HPSS_Resource(ResourceSuite, ChunkyDevTest, unittest.Te
         name = u"ედუარდშევარდნაძე"
         p = subprocess.Popen(['iput','-f',filepath,name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, errors = p.communicate()
-        assert p.returncode == 0, p.returncode 
+        assert p.returncode == 0, p.returncode
         assert not output, output
         assert not errors, errors
 
         p = subprocess.Popen(['ils','-l',name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, errors = p.communicate()
-        assert p.returncode == 0, p.returncode 
+        assert p.returncode == 0, p.returncode
         assert not errors, errors
         print output
 
         p = subprocess.Popen(['itrim','-n0','-N1',name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, errors = p.communicate()
-        assert p.returncode == 0, p.returncode 
+        assert p.returncode == 0, p.returncode
         assert not output, output
         assert not errors, errors
 
@@ -69,13 +73,13 @@ class Test_Compound_with_HPSS_Resource(ResourceSuite, ChunkyDevTest, unittest.Te
         output, errors = p.communicate()
         assert not output, output
         assert not errors, errors
-        assert p.returncode == 0, p.returncode 
-   
+        assert p.returncode == 0, p.returncode
+
         assert filecmp.cmp(filepath,'mylocaltestfile')
 
         p = subprocess.Popen(['irm','-f',name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, errors = p.communicate()
-        assert p.returncode == 0, p.returncode 
+        assert p.returncode == 0, p.returncode
         assert not output, output
         assert not errors, errors
 

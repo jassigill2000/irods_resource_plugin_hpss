@@ -10,12 +10,6 @@ To build the HPSS Resource Plugin, you will need to have:
 
  - the HPSS client from IBM
 
-
-Then to build this resource plugin:
-
-  ./packaging/build.sh
-
-
 To use this resource plugin:
 
   irods@hostname $ iadmin mkresc archiveResc hpss <hostname>:<VaultName> keytab=/var/hpss/etc/irods.keytab;user=irods;mech=[unix,krb]
