@@ -3,6 +3,7 @@
 import commands
 import os
 import re
+import json
 import shutil
 import socket
 import subprocess
@@ -18,12 +19,22 @@ from .test_chunkydevtest import ChunkyDevTest
 import filecmp
 
 from ..configuration import IrodsConfig
+from ..controller import IrodsController
 from . import session
 from .. import lib
 
 class Test_Compound_with_HPSS_Resource(ResourceSuite, ChunkyDevTest, unittest.TestCase):
     def setUp(self):
         hostname = lib.get_hostname()
+
+        with open('/etc/irods/server_config.json') as f:
+            d = json.load(f)
+        if 'LD_PRELOAD' not in d['environment_variables']:
+            d['environment_variables']['LD_PRELOAD'] = '/lib64/libtirpc.so'
+            with open('/etc/irods/server_config.json', 'w') as f:
+                json.dump(d, f, sort_keys=True, indent=4)
+            IrodsController().restart()
+
         with session.make_session_for_existing_admin() as admin_session:
             admin_session.assert_icommand("iadmin modresc demoResc name origResc", 'STDOUT_SINGLELINE', 'rename', input='yes\n')
             admin_session.assert_icommand("iadmin mkresc demoResc compound", 'STDOUT_SINGLELINE', 'compound')
